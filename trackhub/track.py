@@ -645,7 +645,7 @@ class SuperTrack(BaseTrack):
         for subtrack in self.subtracks:
             s.append("")
             for line in str(subtrack).splitlines(False):
-                s.append(line)
+                s.append('    ' + line)
         return '\n'.join(s)
 
 
