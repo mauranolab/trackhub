@@ -465,6 +465,20 @@ track_typespecific_fields = {
     'vcfTabix': OrderedDict((i.param, i) for i in [
         # No Special Configuration for vcfTabix, uses maxWindowToDraw
 
+        #Subset of available parameters
+        Parameter(
+            'applyMinQual',
+            """
+            on|off; If true, then variants whose QUAL column contains a value less than the minQual setting will not be displayed
+            """,
+            set(['true', 'false'])),
+
+        Parameter(
+            'minQual',
+            """
+            Assuming applyMinQual is true, this is the minimum QUAL value required for a variant to be displayed.
+            """,
+            int),
     ]
     ),
 
