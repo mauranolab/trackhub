@@ -506,6 +506,24 @@ composite_track_fields = OrderedDict((i.param, i) for i in [
         str),
 
     Parameter(
+        'dimensionAchecked',
+        "dimensionAchecked=factor1",
+        # TODO: better verification
+        str),
+
+    Parameter(
+        'dimensionXchecked',
+        "dimensionXchecked=factor1",
+        # TODO: better verification
+        str),
+
+    Parameter(
+        'dimensionYchecked',
+        "dimensionYchecked=factor1",
+        # TODO: better verification
+        str),
+
+    Parameter(
         'sortOrder',
         'sort order for composite, e.g., cellType=+ factor=-',
         str),
