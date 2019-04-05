@@ -604,7 +604,7 @@ class ViewTrack(BaseTrack):
 
 
 class SuperTrack(BaseTrack):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, supertrackonoff="", *args, **kwargs):
         """
         Represents a Super track. Subclasses :class:`Track`, and adds some
         extras.
@@ -616,8 +616,15 @@ class SuperTrack(BaseTrack):
         add this supertrack to it with that instance's :meth:`add_tracks`
         method.
 
-        See :class:`BaseTrack` for details on arguments.
+        Parameters
+        ----------
+
+        supertrackonoff : 'show' | 'hide'
+            Used to determine supertrackonoff status on or off
+
+        See :class:`BaseTrack` for further details on arguments.
         """
+        self.supertrackonoff = " " + supertrackonoff
         super(SuperTrack, self).__init__(*args, **kwargs)
         self.subtracks = []
 
@@ -638,7 +645,7 @@ class SuperTrack(BaseTrack):
         s = []
 
         s.append(super(SuperTrack, self).__str__())
-        s.append('superTrack on')
+        s.append('superTrack on' + self.supertrackonoff)
 
         # Removed subtracks for Supertrack because composite tracks can be
         # within the supertrack.  This is also the recommendation from UCSC
