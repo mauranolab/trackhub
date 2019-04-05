@@ -661,7 +661,7 @@ class ViewTrack(BaseTrack):
 
 
 class SuperTrack(BaseTrack):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, supertrackonoff="", *args, **kwargs):
         """
         Represents a Super track. Subclasses :class:`Track`, and adds some
         extras.
@@ -673,8 +673,15 @@ class SuperTrack(BaseTrack):
         add this supertrack to it with that instance's :meth:`add_tracks`
         method.
 
-        See :class:`BaseTrack` for details on arguments.
+        Parameters
+        ----------
+
+        supertrackonoff : 'show' | 'hide'
+            Used to determine supertrackonoff status on or off
+
+        See :class:`BaseTrack` for further details on arguments.
         """
+        self.supertrackonoff = " " + supertrackonoff
         super(SuperTrack, self).__init__(tracktype='superTrack', *args, **kwargs)
         self.track_field_order = update_list(
             self.track_field_order, constants.track_fields['superTrack'])
@@ -703,7 +710,7 @@ class SuperTrack(BaseTrack):
         s = []
 
         s.append(super(SuperTrack, self).__str__())
-        s.append('superTrack on')
+        s.append('superTrack on' + self.supertrackonoff)
 
         for subtrack in self.subtracks:
             s.append("")
