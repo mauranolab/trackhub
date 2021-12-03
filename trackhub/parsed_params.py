@@ -355,6 +355,20 @@ param_defs = [
         validator=str),
 
     Param(
+        name="dimensionXchecked",
+        fmt=['dimension<?>checked <mTag1a> [mTag1b ...]'],
+        types=['subGroups'],
+        required=False,
+        validator=str),
+
+    Param(
+        name="dimensionYchecked",
+        fmt=['dimension<?>checked <mTag1a> [mTag1b ...]'],
+        types=['subGroups'],
+        required=False,
+        validator=str),
+
+    Param(
         name="dimensions",
         fmt=['dimensions <dimX=gTag#> [dimY=gTag#] [dimA=gTag# ...]'],
         types=['subGroups'],
