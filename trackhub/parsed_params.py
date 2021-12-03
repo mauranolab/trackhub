@@ -1252,6 +1252,20 @@ param_defs = [
         required=False,
         validator=str),
 
+    ## Add vcfTabix available parameters
+    Param(
+        name="applyMinQual",
+        fmt=['applyMinQual <true/false>'],
+        types=['vcfTabix'],
+        required=False,
+        validator=set(['true', 'false'])),
+    
+    Param(
+        name="minQual",
+        fmt=['minQual <integer>'],
+        types=['vcfTabix'],
+        required=False,
+        validator=int),
     ]
 
 
