@@ -126,8 +126,8 @@ see other config options. Here are some screenshots:
         short_label='Regions')
 
     # These need to be added to the composite.
-    composite.add_view(signal_view)
-    composite.add_view(regions_view)
+    composite.add_tracks(signal_view)
+    composite.add_tracks(regions_view)
 
     # Next we will build a multiWig overlay track which will show an example of
     # the signal as multiple bigWigs overlaying each other.
@@ -251,7 +251,7 @@ see other config options. Here are some screenshots:
 
 
     # Example of "uploading" the hub locally, to be pushed to github later:
-    trackhub.upload.upload_hub(hub=hub, host='localhost', remote_dir='example_grouping_hub')
+    trackhub.upload.upload_hub(hub=hub, host='localhost', remote_dir='example_hubs/example_grouping_hub')
 
     # Example uploading to a web server (not run):
     if 0:

@@ -121,7 +121,7 @@ want to look at that first.
         '''
         )
     )
-    composite.add_view(signal_view)
+    composite.add_tracks(signal_view)
 
     # This multiWig overlay track will shows multiple bigWigs overlaying each
     # other in the same track
@@ -202,7 +202,7 @@ want to look at that first.
     )
     trackdb.add_tracks(single_track)
 
-    trackhub.upload.upload_hub(hub=hub, host='localhost', remote_dir='example_htmldoc_hub')
+    trackhub.upload.upload_hub(hub=hub, host='localhost', remote_dir='example_hubs/example_htmldoc_hub')
 
     if 0:
         trackhub.upload.upload_hub(

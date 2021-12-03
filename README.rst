@@ -1,6 +1,11 @@
 trackhub
 ========
 
+.. image:: https://github.com/daler/trackhub/workflows/main/badge.svg
+    :target: https://github.com/daler/trackhub/actions?query=workflow%3Amain
+
+See the documentation at https://daler.github.io/trackhub for more details.
+
 Data visualization is critical at all steps of genomic data analysis, from QC
 through final figure preparation.  A `track hub
 <https://genome.ucsc.edu/goldenPath/help/hgTrackHubHelp.html>`_ is way of
@@ -22,14 +27,12 @@ itself, the common Python package `docutils`, and the availability of ``rsync``
 availabe on PyPI, bioconda, and GitHub; an automated test suite and tested
 documentation ensure high-quality code and help.
 
-See the documentation at https://daler.github.io/trackhub for more details.
-
 Installation
 ------------
 
-Using `bioconda <https://bioconda.github.io>`_: ``conda install trackhub``
-
 Using pip: ``pip install trackhub``
+
+Using `bioconda <https://bioconda.github.io>`_: ``conda install trackhub``
 
 Features
 --------
@@ -76,16 +79,12 @@ Basic example
 -------------
 The following code demonstrates a track hub built out of all bigWig files found
 in a directory. It is relatively simple; see these other examples from the
-documentation for more advanced usage:
+documentation for complex usage.
 
-- `grouping example <https://daler.github.io/trackhub/grouping.html>`_ (`load the grouping example hub in UCSC <http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&hubUrl=https://raw.githubusercontent.com/daler/trackhub-demo/master/example_grouping_hub/grouping.hub.txt&position=chr1%3A1-5000>`_)
-- `html documentation example <https://daler.github.io/trackhub/html_doc.html>`_ (`load the HTML documentation example hub in UCSC <http://genome.ucsc.edu/cgi-bin/hgHubConnect?hgHub_do_redirect=on&hgHubConnect.remakeTrackHub=on&hgHub_do_firstDb=1&hubUrl=https://raw.githubusercontent.com/daler/trackhub-demo/master/example_htmldoc_hub/htmldoc.hub.txt>`_)
-- `assembly example <https://daler.github.io/trackhub/assembly_example.html>`_ (`load the assembly example hub in UCSC <http://genome.ucsc.edu/cgi-bin/hgHubConnect?hgHub_do_redirect=on&hgHubConnect.remakeTrackHub=on&hgHub_do_firstDb=1&hubUrl=https://raw.githubusercontent.com/daler/trackhub-demo/master/example_assembly_hub/assembly_hub.hub.txt>`_)
-
-This basis example is run automatically when the documentation is re-generated.
+This basic example is run automatically when the documentation is re-generated.
 You can view the uploaded files in the `trackhub-demo
 <https://github.com/daler/trackhub-demo>`_ GitHub repository, and `load the hub
-<http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&hubUrl=https://raw.githubusercontent.com/daler/trackhub-demo/total-refactor/example_hub/myhub.hub.txt&position=chr1%3A1-5000>`_
+<http://genome.ucsc.edu/cgi-bin/hgTracks?db=hg38&hubUrl=https://raw.githubusercontent.com/daler/trackhub-demo/master/example_hub/myhub.hub.txt&position=chr1%3A1-5000>`_
 directly into UCSC to see what it looks like.
 
 .. code-block:: python
@@ -94,19 +93,31 @@ directly into UCSC to see what it looks like.
     import trackhub
 
     # First we initialize the components of a track hub
+
     hub, genomes_file, genome, trackdb = trackhub.default_hub(
         hub_name="myhub",
         short_label='myhub',
         long_label='myhub',
         genome="hg38",
-        email="dalerr@niddk.nih.gov")
+        email="ryan.dale@nih.gov")
 
-    # Next, we add a track for every bigwig found.  In practice, you would
-    # point to your own files. In this example we use the path to the data
-    # included with trackhub.
+    # Next we add tracks for some bigWigs. These can be anywhere on the
+    # filesystem; symlinks will be made to them. Here we use some example data
+    # included with the trackhub package; in practice you'd point to your own
+    # data.
 
-    for bigwig in glob.glob('../trackhub/test/data/sine-hg38-*.bw'):
+    for bigwig in glob.glob('trackhub/test/data/sine-hg38-*.bw'):
+
+        # track names can't have any spaces or special characters. Since we'll
+        # be using filenames as names, and filenames have non-alphanumeric
+        # characters, we use the sanitize() function to remove them.
+
         name = trackhub.helpers.sanitize(os.path.basename(bigwig))
+
+        # We're keeping this relatively simple, but arguments can be
+        # programmatically determined (color tracks based on sample; change scale
+        # based on criteria, etc).
+
         track = trackhub.Track(
             name=name,          # track names can't have any spaces or special chars.
             source=bigwig,      # filename to build this track from
@@ -117,19 +128,22 @@ directly into UCSC to see what it looks like.
         )
 
         # Each track is added to the trackdb
+
         trackdb.add_tracks(track)
 
     # In this example we "upload" the hub locally. Files are created in the
     # "example_hub" directory, along with symlinks to the tracks' data files.
     # This directory can then be pushed to GitHub or rsynced to a server.
-    trackhub.upload.upload_hub(hub=hub, host='localhost', remote_dir='example_hub')
+
+    trackhub.upload.upload_hub(hub=hub, host='localhost', remote_dir='example_hubs/example_hub')
 
     # Alternatively, we could upload directly to a web server (not run in this
     # example):
+
     if 0:
         trackhub.upload.upload_hub(
             hub=hub, host='example.com', user='username',
             remote_dir='/var/www/example_hub')
 
 
-Copyright 2012-2017 Ryan Dale; MIT license.
+Copyright 2012-2020 Ryan Dale; MIT license.
