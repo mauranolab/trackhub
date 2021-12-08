@@ -710,7 +710,7 @@ param_defs = [
     Param(
         name="maxHeightPixels",
         fmt=['maxHeightPixels <max:default:min>'],
-        types=['bigInteract', 'bigWig'],
+        types=['bigInteract', 'bigWig', 'bigBed'],
         required=False,
         validator=validate.ColSV3),
 
@@ -718,7 +718,7 @@ param_defs = [
     Param(
         name="maxItems",
         fmt=['maxItems <integer>'],
-        types=['bigBed'],
+        types=['bigBed', 'bam', 'vcfTabix'],
         required=False,
         validator=int),
 
