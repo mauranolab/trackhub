@@ -81,13 +81,12 @@ Furthermore, the genomes.txt file's name is prefixed by the hub name.
 
 So far, the `trackdb` object has no tracks added:
 
-.. testcode::
+.. doctest::
 
-    print(trackdb)
-
-.. testoutput::
-    :options: +NORMALIZE_WHITESPACE
-    
+    >>> print(trackdb)
+    Traceback (most recent call last):
+      ...
+    ValueError: No Track objects specified
     
 
 Adding tracks
@@ -119,7 +118,7 @@ to the `trackdb` as well:
     track1 = trackhub.Track(
         name="signal1",
         source=os.path.join(trackhub.helpers.data_dir(), 'sine-hg38-0.bedgraph.bw'),
-        tracktype='bigWig',
+        tracktype='bigWig -2 2',
     )
 
     trackdb.add_tracks(track1)
@@ -160,17 +159,17 @@ Now that we have added tracks to the `trackdb` object, printing it should show t
     bigDataUrl signal1.bigWig
     shortLabel signal1
     longLabel signal1
-    type bigWig
+    type bigWig -2 2
 
     track signal2
     bigDataUrl signal2.bigWig
     shortLabel Signal 2
     longLabel Signal track for sample 2
     type bigWig
-    visibility full
     color 128,0,0
     maxHeightPixels 8:50:128
     viewLimits -2:2
+    visibility full
 
 Render (stage) the hub
 ~~~~~~~~~~~~~~~~~~~~~~

@@ -2,24 +2,53 @@ from __future__ import absolute_import
 
 import os
 import re
-from collections import OrderedDict
+import warnings
 from docutils.core import publish_parts
 from trackhub.base import HubComponent, deprecation_handler
 from trackhub import hub
 from trackhub import constants
+from trackhub import settings
 
 
-TRACKTYPES = ['bigWig', 'bam', 'bigBed', 'vcfTabix', None]
-
+TRACKTYPES = ['bigWig', 'bam', 'bigBed', 'vcfTabix', 'bigNarrowPeak', None,
+              'bigBarChart', 'bigChain', 'bigGenePred', 'bigNarrowPeak',
+              'bigMaf', 'bigPsl', 'halSnake']
 
 def _check_name(name):
     regex = re.compile('[^a-zA-Z0-9-_]')
     if regex.search(name):
         raise ValueError('Non-alphanumeric character in name "%s"' % name)
 
-
 class ParameterError(Exception):
     pass
+
+
+def update_list(existing, new, first=constants.initial_params):
+    """
+    Extend a list, but with constraints.
+
+    Returned list is sorted alphabetically, except for any items that are in
+    `first`, which will come first regardless of sorting.
+
+    Parameters
+    ----------
+    existing : list
+        List to extend
+
+    new : list
+        Update `existing` with this
+
+    first : list or None
+        If provided, ensure that this list occurs at the beginning. Items must
+        already be in `existing` or `new`, others are ignored.
+    """
+    if first is None:
+        first = []
+
+    combined = set(existing + new)
+    beginning = [i for i in first if i in combined]
+    end = sorted(combined.difference(first))
+    return beginning + end
 
 
 class SubGroupDefinition(object):
@@ -77,22 +106,9 @@ class SubGroupDefinition(object):
 
 
 class BaseTrack(HubComponent):
-
-    # Dictionary where keys are parameter names (e.g., "color") and values are
-    # Parameter objects.  These are defined in the constants module.
-    params = OrderedDict()
-    params.update(constants.track_field_order)
-    params.update(constants.track_fields)
-
-    # For a plain 'ol Track, there's nothing specific.  But CompositeTracks and
-    # ViewTracks can have addtional specific parameters (e.g., filterComposite
-    # for CompositeTracks) that need to be handled separately.  Make some space
-    # for that here.
-    specific_params = OrderedDict()
-
     def __init__(self, name, tracktype=None, short_label=None,
-                 long_label=None, parentonoff="on", subgroups=None, source=None,
-                 filename=None, html_string=None, html_string_format="rst", **kwargs):
+                 long_label=None, subgroups=None, source=None, filename=None,
+                 html_string=None, html_string_format="rst", **kwargs):
         """
         Represents a single track stanza, base class for other track types.
 
@@ -114,9 +130,6 @@ class BaseTrack(HubComponent):
         long_label : str
             Used for the longer middle labels; if None will copy
             short_label. Alias for UCSC parameter "longLabel".
-
-        parentonoff : 'on' | 'off'
-            Used to determine individual track status on or off
 
         subgroups : dict
             A dictionary of `{name: tag}` where each `name` is the name of
@@ -153,13 +166,26 @@ class BaseTrack(HubComponent):
         html_string_format : 'html' or 'rst'
             Indicates the format of `html_string`. If `"html"`, then use as-is;
             if `"rst"` then convert ReST to HTML.
-
-
         """
         source, filename = deprecation_handler(source, filename, kwargs)
         HubComponent.__init__(self)
         _check_name(name)
         self.name = name
+
+        # Dictionary where keys are parameter names (e.g., "color") and values
+        # are Param objects.  These are defined in the constants module. To
+        # start, we add the params valid for all tracks.
+        #
+        # The Track subclass will add its own parameters when the track type is
+        # set. Other subclasses (Composite and View) will add their own special
+        # params in the class definition.
+        self.track_field_order = []
+        self.track_field_order = update_list(self.track_field_order,
+                                             constants.track_fields['all'])
+
+        # NOTE: when setting track type, it will update the track field order
+        # according to the known params for that track...so
+        # self.track_field_order needs to exist first.
         self.tracktype = tracktype
         if short_label is None:
             short_label = name
@@ -167,7 +193,6 @@ class BaseTrack(HubComponent):
         if long_label is None:
             long_label = short_label
         self.long_label = long_label
-        self.parentonoff = parentonoff
 
         self._source = source
         self._filename = filename
@@ -185,6 +210,7 @@ class BaseTrack(HubComponent):
         self.kwargs = kwargs
 
         self._orig_kwargs = kwargs.copy()
+
 
     @property
     def _html(self):
@@ -248,12 +274,13 @@ class BaseTrack(HubComponent):
         need to be set as well.
         """
         self._tracktype = tracktype
-        if tracktype is not None:
-            if 'bed' in tracktype.lower():
-                tracktype = 'bigBed'
-            elif 'wig' in tracktype.lower():
-                tracktype = 'bigWig'
-        self.params.update(constants.track_typespecific_fields[tracktype])
+
+        # E.g., bigBed 6+3
+        base_tracktype = tracktype.split()[0]
+
+        fields = []
+        fields.extend(constants.track_fields[base_tracktype])
+        self.track_field_order = update_list(self.track_field_order, fields)
 
     def add_trackdb(self, trackdb):
         """
@@ -274,13 +301,16 @@ class BaseTrack(HubComponent):
 
         """
         for k, v in kw.items():
-            if (k not in self.params) and (k not in self.specific_params):
-                raise ParameterError('"%s" is not a valid parameter for %s'
-                                     % (k, self.__class__.__name__))
-            try:
-                self.params[k].validate(v)
-            except KeyError:
-                self.specific_params[k].validate(v)
+            if k not in self.track_field_order and constants.VALIDATE:
+                raise ParameterError(
+                    '"{0}" is not a valid parameter for {1} with '
+                    'tracktype {2}'
+                    .format(k, self.__class__.__name__, self.tracktype)
+                )
+            if not constants.param_dict[k].validate(v) and constants.VALIDATE:
+                raise ParameterError(
+                    'value "{0}" did not validate for parameter "{1}"'
+                    .format(k, v))
 
         self._orig_kwargs.update(kw)
         self.kwargs = self._orig_kwargs.copy()
@@ -322,35 +352,41 @@ class BaseTrack(HubComponent):
 
     def __str__(self):
         s = []
+        kwargs = self.kwargs.copy()
+        for name in self.track_field_order:
+            value = kwargs.pop(name, None)
+            if name == 'parent':
+                if isinstance(self.parent, BaseTrack):
+                    if value is not None:
+                        s.append('parent {0} {1}'.format(self.parent.name, value))
+                    else:
+                        s.append('parent {0}'.format(self.parent.name))
+                continue
 
-        specific = []
-        for name, parameter_obj in self.specific_params.items():
-            value = self.kwargs.pop(name, None)
-            if value is not None:
-                if parameter_obj.validate(value):
-                    specific.append("%s %s" % (name, value))
-
-        for name, parameter_obj in self.params.items():
-            value = self.kwargs.pop(name, None)
-            if name == 'bigDataUrl':
+            if name == 'bigDataUrl' and value is None:
+                # fall back to `url` if set
                 value = getattr(self, 'url', None)
+
             if value is not None:
-                if parameter_obj.validate(value):
+                if constants.param_dict[name].validate(value) or not settings.VALIDATE:
                     s.append("%s %s" % (name, value))
 
-        s.extend(specific)
-
+                else:
+                    raise ParameterError(
+                        "The value '{0}' did not validate for parameter '{1}'"
+                        .format(value, name))
         # Handle subgroups differently depending on if this is a composite
         # track or not.
         s.extend(self._str_subgroups())
 
-        if self.parent is not None:
-            if isinstance(self.parent, BaseTrack):
-                s.append('parent %s' % self.parent.name + ' ' + self.parentonoff)
-
-        if len(self.kwargs) > 0:
-            raise ParameterError(
-                "Unhandled keyword arguments: %s" % self.kwargs)
+        if settings.VALIDATE:
+            if len(kwargs) > 0:
+                raise ParameterError(
+                    "The following parameters are unknown for track type {0}: "
+                    "{1}".format(self.tracktype, kwargs))
+        else:
+            for k, v in kwargs.items():
+                s.append("%s %s" % (k, v))
 
         self.kwargs = self._orig_kwargs.copy()
 
@@ -369,7 +405,6 @@ class BaseTrack(HubComponent):
         return ['subGroups %s'
                 % ' '.join(['%s=%s' % (k, v) for (k, v) in
                            self.subgroups.items()])]
-
     def validate(self):
         pass
 
@@ -403,9 +438,13 @@ class Track(BaseTrack):
 
         See :class:`BaseTrack` for details on other arguments.
         """
+
+        if 'bigDataUrl' in kwargs and url is not None:
+            raise ValueError('Only one of bigDataUrl or url should be specified')
+
         kwargs['bigDataUrl'] = kwargs.get('bigDataUrl', url)
         super(Track, self).__init__(*args, **kwargs)
-        self._url = url
+        self._url = kwargs['bigDataUrl']
 
     @property
     def url(self):
@@ -430,9 +469,7 @@ class CompositeTrack(BaseTrack):
         Represents a composite track.  Subclasses :class:`BaseTrack`, and adds
         some extras.
 
-        Add a view to this composite with :meth:`add_view`.
-
-        Add a subtrack with :meth:`add_track`.
+        Add a view or subtrack to this composite with :meth:`add_tracks`.
 
         Eventually, you'll need to make a :class:`trackdb.TrackDb` instance and
         add this composite to it with :meth:`trackdb.TrackDb.add_tracks()`. If
@@ -444,7 +481,10 @@ class CompositeTrack(BaseTrack):
         """
         super(CompositeTrack, self).__init__(*args, **kwargs)
 
-        self.specific_params.update(constants.composite_track_fields)
+        self.track_field_order = update_list(
+            self.track_field_order, constants.track_fields['compositeTrack'])
+        self.track_field_order = update_list(
+            self.track_field_order, constants.track_fields['subGroups'])
 
         # TODO: are subtracks and views mutually exclusive, or can a composite
         # have both "view-ed" and "non-view-ed" subtracks?
@@ -474,20 +514,48 @@ class CompositeTrack(BaseTrack):
     def add_subtrack(self, subtrack):
         """
         Add a child :class:`Track`.
+
+        Deprecated in favor of the more generic `add_tracks` method, but
+        maintained for backwards compatibility.
         """
-        self.add_child(subtrack)
-        self.subtracks.append(subtrack)
+        self.add_tracks(subtrack)
 
     def add_view(self, view):
         """
         Add a ViewTrack object to this composite.
 
+        Deprecated in favor of the more generic `add_tracks` method, but
+        maintained for backwards compatibility.
+
         :param view:
             A ViewTrack object.
         """
+        self.add_tracks(view)
 
-        self.add_child(view)
-        self.views.append(view)
+    def add_tracks(self, *args):
+        """
+        This method allows for both view and subtracks to be added to
+        a composite at the same time. `args` can be arbitrary BaseTrack objects
+        (typically Track or View objects), either singly or as a list. For
+        example any of the following are supported::
+
+            add_tracks(view)
+
+            add_tracks(view, [track1, track2])
+
+            add_tracks(track1, track2)
+        """
+        for arg in args:
+            if isinstance(arg, BaseTrack):
+                arg = [arg]
+
+            for track in arg:
+                if isinstance(track, ViewTrack):
+                    self.add_child(track)
+                    self.views.append(track)
+                if isinstance(track, Track):
+                    self.add_child(track)
+                    self.subtracks.append(track)
 
     def _str_subgroups(self):
         """
@@ -523,12 +591,12 @@ class CompositeTrack(BaseTrack):
         for view in self.views:
             s.append("")
             for line in str(view).splitlines(False):
-                s.append('    ' + line)
+                s.append(constants.INDENT + line)
 
         for subtrack in self.subtracks:
             s.append("")
             for line in str(subtrack).splitlines(False):
-                s.append('    ' + line)
+                s.append(constants.INDENT + line)
         return "\n".join(s)
 
 
@@ -559,47 +627,36 @@ class ViewTrack(BaseTrack):
         self.view = view
         kwargs['view'] = view
         super(ViewTrack, self).__init__(*args, **kwargs)
+        self.track_field_order = update_list(
+            self.track_field_order, constants.track_fields['view'])
         self.subtracks = []
 
-    def add_subgroups(self, subgroups):
-        if subgroups is None:
-            subgroups = {}
-        else:
-            raise ValueError('not sure if Views can have subgroups?')
-
-    def add_tracks(self, subtracks):
+    def add_tracks(self, *args):
         """
         Add one or more tracks to this view.
 
-        subtracks : Track or iterable of Tracks
-            A single Track instance or an iterable of them.
-        """
-        if isinstance(subtracks, Track):
-            subtracks = [subtracks]
-        for subtrack in subtracks:
-            subtrack.subgroups['view'] = self.view
-            self.add_child(subtrack)
-            self.subtracks.append(subtrack)
+        Parameters
+        ----------
 
-    def _str_subgroups(self):
-        return ""
+        args : Track or iterable of Tracks
+
+        """
+        for arg in args:
+            if isinstance(arg, BaseTrack):
+                arg = [arg]
+            for track in arg:
+                track.subgroups['view'] = self.view
+                self.add_child(track)
+                self.subtracks.append(track)
 
     def __str__(self):
         s = []
-        view_specific = []
-        for name, parameter_obj in constants.view_track_fields.items():
-            value = self.kwargs.pop(name, None)
-            if value is not None:
-                if parameter_obj.validate(value):
-                    view_specific.append("%s %s" % (name, value))
-
         s.append(super(ViewTrack, self).__str__())
-        s.extend(view_specific)
 
         for subtrack in self.subtracks:
             s.append("")
             for line in str(subtrack).splitlines(False):
-                s.append('        ' + line)
+                s.append(constants.INDENT + line)
         return '\n'.join(s)
 
 
@@ -609,7 +666,7 @@ class SuperTrack(BaseTrack):
         Represents a Super track. Subclasses :class:`Track`, and adds some
         extras.
 
-        Super tracks are container tracks (Folders) that group tracks. They are
+        Super tracks are container tracks (folders) that group tracks. They are
         used to control visualization of a set of related data.
 
         Eventually, you'll need to make a :class:`trackdb.TrackDb` instance and
@@ -625,20 +682,28 @@ class SuperTrack(BaseTrack):
         See :class:`BaseTrack` for further details on arguments.
         """
         self.supertrackonoff = " " + supertrackonoff
-        super(SuperTrack, self).__init__(*args, **kwargs)
+        super(SuperTrack, self).__init__(tracktype='superTrack', *args, **kwargs)
+        self.track_field_order = update_list(
+            self.track_field_order, constants.track_fields['superTrack'])
+
         self.subtracks = []
 
-    def add_tracks(self, subtracks):
+    def add_tracks(self, *args):
         """
         Add one or more tracks.
 
-        subtrack : Track or iterable of Tracks
+        Parameters
+        ----------
+
+        args : Track or iterable of Tracks
+
         """
-        if isinstance(subtracks, BaseTrack):
-            subtracks = [subtracks]
-        for subtrack in subtracks:
-            self.add_child(subtrack)
-            self.subtracks.append(subtrack)
+        for arg in args:
+            if isinstance(arg, BaseTrack):
+                arg = [arg]
+            for track in arg:
+                self.add_child(track)
+                self.subtracks.append(track)
 
     def __str__(self):
 
@@ -647,12 +712,10 @@ class SuperTrack(BaseTrack):
         s.append(super(SuperTrack, self).__str__())
         s.append('superTrack on' + self.supertrackonoff)
 
-        # Removed subtracks for Supertrack because composite tracks can be
-        # within the supertrack.  This is also the recommendation from UCSC
         for subtrack in self.subtracks:
             s.append("")
             for line in str(subtrack).splitlines(False):
-                s.append('    ' + line)
+                s.append(constants.INDENT + line)
         return '\n'.join(s)
 
 
@@ -685,15 +748,33 @@ class AggregateTrack(BaseTrack):
         self.aggregate = aggregate
         kwargs['aggregate'] = aggregate
         super(AggregateTrack, self).__init__(*args, **kwargs)
-        self.specific_params.update(constants.aggregate_track_fields)
+        self.track_field_order = update_list(
+            self.track_field_order, constants.track_fields['multiWig'])
         self.subtracks = []
 
     def add_subtrack(self, subtrack):
         """
-        Add a child :class:`SubTrack` to this aggregrate.
+        Add a child :class:`SubTrack` to this aggregate.
         """
-        self.add_child(subtrack)
-        self.subtracks.append(subtrack)
+        self.add_tracks(subtrack)
+
+    def add_tracks(self,*args):
+        """
+        Add one or more tracks.
+
+        Parameters
+        ----------
+
+        args : Track or iterable of Tracks
+
+        """
+
+        for arg in args:
+            if isinstance(arg, BaseTrack):
+                arg = [arg]
+            for track in arg:
+                self.add_child(track)
+                self.subtracks.append(track)
 
     def __str__(self):
 
@@ -705,9 +786,8 @@ class AggregateTrack(BaseTrack):
         for subtrack in self.subtracks:
             s.append("")
             for line in str(subtrack).splitlines(False):
-                s.append('    ' + line)
+                s.append(constants.INDENT + line)
         return "\n".join(s)
-
 
 class HTMLDoc(HubComponent):
     def __init__(self, contents, html_string_format, filename=None):
@@ -784,13 +864,18 @@ class HTMLDoc(HubComponent):
         if self.html_string_format == 'html':
             return self.contents
         elif self.html_string_format == 'rst':
-            parts = publish_parts(
-                self.contents, writer_name='html',
-                settings_overrides={'output_encoding': 'unicode'}
-            )
+
+            # docutils still internally uses a "U" mode for opening files.
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore')
+                parts = publish_parts(
+                    self.contents, writer_name='html',
+                    settings_overrides={'output_encoding': 'unicode'}
+                )
             return parts['html_body']
         else:
             raise ValueError(
-                "html_string_format '{}' not supported".format(self.html_string_format)
+                "html_string_format '{}' not supported".format(
+                    self.html_string_format)
             )
         return self.contents
