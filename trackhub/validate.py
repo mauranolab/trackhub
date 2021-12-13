@@ -267,20 +267,22 @@ def alphanumeric_(v):
 @validator('one two three', 'aaaaaaaaaaaaaaaaa')
 def short_label(v):
     assert isinstance(v, string_types)
-    if len(v) > 17:
-        warnings.warn(
-            "shortLabel is limited to 17 characters "
-            "in the browser, some characters will be truncated")
+    # suppressing warning (trackhub does not actually truncate, and neither does the browser)
+    # if len(v) > 17:
+    #     warnings.warn(
+    #         "shortLabel is limited to 17 characters "
+    #         "in the browser, some characters will be truncated")
     return True
 
 
 @validator('a' * 76, 'four five six')
 def long_label(v):
     assert isinstance(v, string_types)
-    if len(v) > 76:
-        warnings.warn(
-            "longLabel is limited to 76 characters "
-            "in the browser, some characters will be truncated")
+    # suppressing warning which appears inaccurate (trackhub does not actually truncate, and neither does the browser)
+    # if len(v) > 76:
+    #     warnings.warn(
+    #         "longLabel is limited to 76 characters "
+    #         "in the browser, some characters will be truncated")
     return True
 
 
