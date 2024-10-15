@@ -107,7 +107,7 @@ class SubGroupDefinition(object):
 
 class BaseTrack(HubComponent):
     def __init__(self, name, tracktype=None, short_label=None,
-                 long_label=None, subgroups=None, source=None, filename=None,
+                 long_label=None, priority=None, subgroups=None, source=None,
                  html_string=None, html_string_format="rst", **kwargs):
         """
         Represents a single track stanza, base class for other track types.
@@ -130,6 +130,13 @@ class BaseTrack(HubComponent):
         long_label : str
             Used for the longer middle labels; if None will copy
             short_label. Alias for UCSC parameter "longLabel".
+
+        priority: float or None
+            Used to order tracks in browser display. Prioritized tracks within 
+            a group or data hub are displayed in ascending priority order, 
+            followed by unprioritized tracks sorted alphabetically by short label. 
+            Tracks of the same priority within a group or hub are sorted by short 
+            label. Priority is a floating point number. Default: 0.
 
         subgroups : dict
             A dictionary of `{name: tag}` where each `name` is the name of
@@ -193,6 +200,7 @@ class BaseTrack(HubComponent):
         if long_label is None:
             long_label = short_label
         self.long_label = long_label
+        self.priority = priority
 
         self._source = source
         self._filename = filename
