@@ -725,7 +725,7 @@ class AggregateTrack(BaseTrack):
         Represents an Aggregate or Overlay track. Subclasses :class:`Track`,
         adds some extras.
 
-        Aggregate tracks allow closley related tracks to be viewed as a single
+        Aggregate tracks allow closely related tracks to be viewed as a single
         track.
 
         Eventually, you'll need to make a :class:`trackdb.TrackDb` instance and
